@@ -7,8 +7,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
 <style>
 :root{--bg:#f7f6f3;--surface:#fff;--surface2:#f0efe9;--border:rgba(0,0,0,.07);--border-md:rgba(0,0,0,.13);--text:#18181b;--muted:#71717a;--hint:#a1a1aa;--blue:#1877F2;--blue-l:#e8f0fd;--blue-m:#bfdbfe;--green:#16a34a;--green-l:#dcfce7;--red:#dc2626;--red-l:#fee2e2;--amber:#d97706;--amber-l:#fef3c7;--purple:#7c3aed;--purple-l:#ede9fe;--teal:#0891b2;--r:10px;--rsm:6px;--rlg:14px}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -50,8 +49,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,sans-seri
 .btn:hover{background:var(--surface2)}
 .btn-green{background:var(--green-l);color:var(--green);border-color:rgba(22,163,74,.2)}
 .btn-green:hover{background:#bbf7d0}
-.btn-red{background:var(--red-l);color:var(--red);border-color:rgba(220,38,38,.2)}
-.btn-red:hover{background:#fecaca}
 .btn-ghost{background:transparent;border-color:transparent;color:var(--muted)}
 .btn-ghost:hover{background:var(--surface2);color:var(--text)}
 
@@ -119,15 +116,7 @@ select:focus{border-color:var(--blue)}
 
 #no-res{display:none;text-align:center;padding:48px;color:var(--muted);font-size:14px}
 
-#pdfm{display:none;position:fixed;inset:0;z-index:999;background:rgba(0,0,0,.5);align-items:center;justify-content:center}
-#pdfm.show{display:flex}
-.mbox{background:white;border-radius:var(--rlg);padding:28px;max-width:400px;width:90%;text-align:center}
-.mbox h3{font-size:17px;font-weight:600;margin-bottom:8px}
-.mbox p{font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.6}
-.mbtns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
-#pdfsp{display:none;flex-direction:column;align-items:center;gap:12px}
-#pdfsp .spinner{width:32px;height:32px}
-#pdfsp p{font-size:13px;color:var(--muted)}
+
 
 @media(max-width:680px){
   .topbar,.cbar,.sgrid,.main{padding-left:16px;padding-right:16px}
@@ -175,10 +164,7 @@ select:focus{border-color:var(--blue)}
         <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
         <span>Export Excel</span>
       </button>
-      <button class="btn btn-red" onclick="showPDF()">
-        <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
-        <span>Export PDF</span>
-      </button>
+
       <button class="btn btn-ghost" onclick="resetApp()">
         <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.86"/></svg>
         <span>New file</span>
@@ -219,24 +205,7 @@ select:focus{border-color:var(--blue)}
   </div>
 </div>
 
-<!-- PDF Modal -->
-<div id="pdfm">
-  <div class="mbox">
-    <div id="pdfch">
-      <h3>Export PDF Report</h3>
-      <p>The PDF will include all metrics in a clean table. Choose which posts to include.</p>
-      <div class="mbtns">
-        <button class="btn btn-red" onclick="doPDF('current')">Current view</button>
-        <button class="btn" onclick="doPDF('all')">All posts</button>
-        <button class="btn btn-ghost" onclick="hidePDF()">Cancel</button>
-      </div>
-    </div>
-    <div id="pdfsp">
-      <div class="spinner"></div>
-      <p>Generating PDF...</p>
-    </div>
-  </div>
-</div>
+
 
 <script>
 let D=[], filter='all', sort='reach', search='', openKey=null, CH={}, pageName='', dateRange='';
@@ -421,92 +390,9 @@ function exportExcel(){
   XLSX.writeFile(wb,`video_insights_${(dateRange||'export').replace(/[^a-z0-9]/gi,'_').toLowerCase()}.xlsx`);
 }
 
-// PDF
-function showPDF(){document.getElementById('pdfm').classList.add('show')}
-function hidePDF(){document.getElementById('pdfm').classList.remove('show');document.getElementById('pdfch').style.display='';document.getElementById('pdfsp').style.display='none'}
 
-async function doPDF(scope){
-  document.getElementById('pdfch').style.display='none';
-  document.getElementById('pdfsp').style.display='flex';
-  const prevF=filter,prevS=sort,prevSr=search,prevO=openKey;
-  if(scope==='all'){filter='all';search='';openKey=null;}
-  try{
-    const d=scope==='all'?[...D].sort((a,b)=>b[sort]-a[sort]):[...getFilt()];
-    const tr=d.reduce((s,x)=>s+x.reach,0),t3=d.reduce((s,x)=>s+x.views_3s,0),
-          tt=d.reduce((s,x)=>s+x.thruplays,0),te=d.reduce((s,x)=>s+x.engagement,0),
-          wd=d.filter(x=>x.duration>0),
-          ar=wd.length?(wd.reduce((s,x)=>s+x.retention_pct,0)/wd.length).toFixed(1):'—';
 
-    // Build off-screen render div — uses real browser font so Arabic renders correctly
-    const wrap=document.createElement('div');
-    wrap.style.cssText='position:fixed;left:-9999px;top:0;width:794px;background:#f7f6f3;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;font-size:13px;color:#18181b;padding:0;';
-    wrap.innerHTML=`
-      <div style="background:#1877F2;padding:18px 24px;display:flex;justify-content:space-between;align-items:center;">
-        <div>
-          <div style="color:white;font-size:18px;font-weight:700;">Video Insights Report</div>
-          <div style="color:rgba(255,255,255,.8);font-size:12px;margin-top:3px;">${pageName||''}${pageName&&dateRange?' · ':''}${dateRange}</div>
-        </div>
-        <div style="color:rgba(255,255,255,.7);font-size:12px;">Generated ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}</div>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;padding:16px 24px;">
-        ${[['Total Reach',fmt(tr),'#1877F2'],['3-Sec Views',fmt(t3),'#7c3aed'],['Thruplays',fmt(tt),'#16a34a'],['Engagement',fmt(te),'#d97706'],['Avg Retention',ar+'%','#0891b2']].map(([l,v,c])=>`
-        <div style="background:white;border-radius:8px;padding:12px 14px;border:1px solid rgba(0,0,0,.07);">
-          <div style="font-size:10px;color:#71717a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;">${l}</div>
-          <div style="font-size:20px;font-weight:700;color:${c};">${v}</div>
-        </div>`).join('')}
-      </div>
-      <div style="padding:0 24px 24px;">
-        <table style="width:100%;border-collapse:collapse;font-size:12px;">
-          <thead>
-            <tr style="background:#1877F2;">
-              <th style="color:white;padding:8px 10px;text-align:left;font-weight:600;width:30px;">#</th>
-              <th style="color:white;padding:8px 10px;text-align:left;font-weight:600;">Title</th>
-              <th style="color:white;padding:8px 10px;text-align:center;font-weight:600;width:55px;">Type</th>
-              <th style="color:white;padding:8px 10px;text-align:right;font-weight:600;width:70px;">Reach</th>
-              <th style="color:white;padding:8px 10px;text-align:right;font-weight:600;width:70px;">3s Views</th>
-              <th style="color:white;padding:8px 10px;text-align:right;font-weight:600;width:70px;">Thruplays</th>
-              <th style="color:white;padding:8px 10px;text-align:right;font-weight:600;width:80px;">Engagement</th>
-              <th style="color:white;padding:8px 10px;text-align:right;font-weight:600;width:65px;">Retention</th>
-              <th style="color:white;padding:8px 10px;text-align:right;font-weight:600;width:65px;">Avg Watch</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${d.map((x,i)=>`
-            <tr style="background:${i%2===0?'white':'#f7f6f3'};border-bottom:1px solid rgba(0,0,0,.05);">
-              <td style="padding:7px 10px;color:#a1a1aa;font-weight:600;">${i+1}</td>
-              <td style="padding:7px 10px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;direction:auto;" title="${x.title}">${x.title}</td>
-              <td style="padding:7px 10px;text-align:center;">
-                <span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:99px;background:${x.type==='Reels'?'#ede9fe':'#e8f0fd'};color:${x.type==='Reels'?'#7c3aed':'#1877F2'};">${x.type==='Reels'?'Reel':'Video'}</span>
-              </td>
-              <td style="padding:7px 10px;text-align:right;font-weight:600;color:#1877F2;">${fmt(x.reach)}</td>
-              <td style="padding:7px 10px;text-align:right;font-weight:600;color:#7c3aed;">${fmt(x.views_3s)}</td>
-              <td style="padding:7px 10px;text-align:right;font-weight:600;color:#16a34a;">${fmt(x.thruplays)}</td>
-              <td style="padding:7px 10px;text-align:right;font-weight:600;color:#d97706;">${fmt(x.engagement)} <span style="font-size:10px;font-weight:400;color:#a1a1aa;">(${x.eng_rate}%)</span></td>
-              <td style="padding:7px 10px;text-align:right;color:#0891b2;font-weight:600;">${x.retention_pct>0?x.retention_pct+'%':'—'}</td>
-              <td style="padding:7px 10px;text-align:right;color:#71717a;">${fmtS(x.avg_secs)}</td>
-            </tr>`).join('')}
-          </tbody>
-        </table>
-      </div>`;
-    document.body.appendChild(wrap);
-    await new Promise(r=>setTimeout(r,300));
 
-    const canvas=await html2canvas(wrap,{scale:2,useCORS:true,logging:false,backgroundColor:'#f7f6f3'});
-    document.body.removeChild(wrap);
-
-    const{jsPDF}=window.jspdf;
-    const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
-    const pw=210,ph=297,imgW=pw,imgH=canvas.height*(pw/canvas.width);
-    let yPos=0;
-    while(yPos<imgH){
-      if(yPos>0)pdf.addPage();
-      pdf.addImage(canvas.toDataURL('image/jpeg',0.92),'JPEG',0,-yPos,imgW,imgH);
-      yPos+=ph;
-    }
-    pdf.save(`video_insights_${(dateRange||'export').replace(/[^a-z0-9]/gi,'_').toLowerCase()}.pdf`);
-  }catch(e){console.error(e);alert('PDF generation failed. Please try the Excel export.')}
-  filter=prevF;sort=prevS;search=prevSr;openKey=prevO;render();hidePDF();
-}
 
 // UTILS
 function fmt(n){if(!n&&n!==0)return'—';if(n>=1e6)return(n/1e6).toFixed(1)+'M';if(n>=1000)return(n/1000).toFixed(1)+'K';return Math.round(n).toLocaleString()}
