@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Video Insights Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<style>
+:root{--bg:#f7f6f3;--surface:#fff;--surface2:#f0efe9;--border:rgba(0,0,0,.07);--border-md:rgba(0,0,0,.13);--text:#18181b;--muted:#71717a;--hint:#a1a1aa;--blue:#1877F2;--blue-l:#e8f0fd;--blue-m:#bfdbfe;--green:#16a34a;--green-l:#dcfce7;--red:#dc2626;--red-l:#fee2e2;--amber:#d97706;--amber-l:#fef3c7;--purple:#7c3aed;--purple-l:#ede9fe;--teal:#0891b2;--r:10px;--rsm:6px;--rlg:14px}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,sans-serif;background:var(--bg);color:var(--text);font-size:14px;min-height:100vh}
+
+#upload-screen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px}
+.ulogo{width:52px;height:52px;background:var(--blue);border-radius:14px;display:flex;align-items:center;justify-content:center;margin-bottom:20px}
+.ulogo svg{width:28px;height:28px;fill:white}
+.utitle{font-size:26px;font-weight:700;letter-spacing:-.5px;margin-bottom:6px;text-align:center}
+.usub{font-size:15px;color:var(--muted);margin-bottom:36px;text-align:center}
+.drop-zone{width:100%;max-width:480px;border:2px dashed var(--border-md);border-radius:var(--rlg);padding:44px 32px;text-align:center;background:var(--surface);cursor:pointer;transition:all .2s;position:relative}
+.drop-zone:hover,.drop-zone.over{border-color:var(--blue);background:var(--blue-l)}
+.drop-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.di{font-size:40px;margin-bottom:12px}
+.dt{font-size:16px;font-weight:600;margin-bottom:6px}
+.ds{font-size:13px;color:var(--muted)}
+.dh{font-size:12px;color:var(--hint);margin-top:8px}
+.steps{display:flex;gap:24px;margin-top:36px;flex-wrap:wrap;justify-content:center;max-width:480px}
+.step{text-align:center;flex:1;min-width:110px}
+.sn{width:28px;height:28px;border-radius:50%;background:var(--surface2);font-size:12px;font-weight:600;color:var(--muted);display:flex;align-items:center;justify-content:center;margin:0 auto 8px}
+.st{font-size:12px;color:var(--muted);line-height:1.5}
+
+#loading-screen{display:none;min-height:100vh;align-items:center;justify-content:center;flex-direction:column;gap:14px}
+.spinner{width:38px;height:38px;border:3px solid var(--border-md);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#lmsg{font-size:14px;color:var(--muted)}
+
+#dashboard-screen{display:none}
+
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 28px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;position:sticky;top:0;z-index:100;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.tl{display:flex;align-items:center;gap:12px}
+.tlogo{width:32px;height:32px;background:var(--blue);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.tlogo svg{width:18px;height:18px;fill:white}
+.ttitle{font-size:15px;font-weight:600}
+.tsub{font-size:12px;color:var(--muted)}
+.tr{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+
+.btn{padding:7px 13px;border-radius:var(--rsm);border:1px solid var(--border-md);background:var(--surface);color:var(--text);font-size:13px;cursor:pointer;font-weight:500;transition:all .15s;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn:hover{background:var(--surface2)}
+.btn-green{background:var(--green-l);color:var(--green);border-color:rgba(22,163,74,.2)}
+.btn-green:hover{background:#bbf7d0}
+.btn-ghost{background:transparent;border-color:transparent;color:var(--muted)}
+.btn-ghost:hover{background:var(--surface2);color:var(--text)}
+
+.cbar{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 28px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.tabs{display:flex;background:var(--surface2);border-radius:8px;padding:3px;gap:2px}
+.tab{padding:5px 14px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;color:var(--muted);border:none;background:none;transition:all .15s;white-space:nowrap}
+.tab.active{background:white;color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+
+.sw{position:relative;flex:1;max-width:280px}
+.sw svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:15px;height:15px;stroke:var(--hint);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
+.sw input{width:100%;padding:7px 10px 7px 32px;border:1px solid var(--border-md);border-radius:var(--rsm);font-size:13px;background:var(--surface);color:var(--text);outline:none;transition:border-color .15s}
+.sw input:focus{border-color:var(--blue)}
+.sw input::placeholder{color:var(--hint)}
+
+.sortw{display:flex;align-items:center;gap:7px;margin-left:auto}
+.sortw label{font-size:12px;color:var(--muted);white-space:nowrap}
+select{font-size:13px;padding:6px 10px;border:1px solid var(--border-md);border-radius:var(--rsm);background:var(--surface);color:var(--text);cursor:pointer;outline:none}
+select:focus{border-color:var(--blue)}
+#count-lbl{font-size:12px;color:var(--hint);white-space:nowrap}
+
+.sgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;padding:20px 28px}
+.sc{background:var(--surface);border-radius:var(--r);padding:14px 16px;border:1px solid var(--border)}
+.sc .sl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.sc .sv{font-size:22px;font-weight:700;line-height:1}
+.sc .ss{font-size:11px;color:var(--hint);margin-top:4px}
+
+.main{padding:0 28px 48px}
+.shdr{font-size:11px;font-weight:600;color:var(--hint);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px}
+
+.vc{background:var(--surface);border:1px solid var(--border);border-radius:var(--rlg);margin-bottom:8px;overflow:hidden;transition:border-color .15s}
+.vc:hover{border-color:var(--border-md)}
+.vc.open{border-color:var(--blue)}
+.vt{padding:14px 18px;cursor:pointer;display:flex;gap:12px;align-items:flex-start}
+.vrk{font-size:12px;font-weight:600;color:var(--hint);min-width:24px;padding-top:3px}
+.vb{flex:1;min-width:0}
+.vtr{display:flex;align-items:center;gap:7px;margin-bottom:4px;flex-wrap:wrap}
+.vti{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:440px}
+.badge{font-size:11px;font-weight:500;padding:2px 8px;border-radius:99px;white-space:nowrap;flex-shrink:0}
+.bv{background:var(--blue-l);color:var(--blue)}
+.br{background:var(--purple-l);color:var(--purple)}
+.bt{background:var(--green-l);color:var(--green)}
+.bl{background:var(--red-l);color:var(--red)}
+.vd{font-size:12px;color:var(--hint);margin-bottom:10px}
+.mrow{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}
+.mc{background:var(--surface2);border-radius:7px;padding:8px 10px}
+.ml{font-size:10px;color:var(--muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.3px}
+.mv{font-size:14px;font-weight:700}
+.mb{height:3px;border-radius:99px;background:var(--border-md);margin-top:5px;overflow:hidden}
+.mbf{height:100%;border-radius:99px}
+.va{display:flex;gap:6px;align-items:center;flex-shrink:0;padding-top:2px}
+.xb{font-size:12px;color:var(--muted);background:var(--surface2);border:1px solid var(--border);border-radius:var(--rsm);padding:5px 10px;cursor:pointer;transition:all .15s;white-space:nowrap}
+.xb:hover{background:var(--border-md)}
+.vl{font-size:12px;color:var(--blue);text-decoration:none;background:var(--blue-l);border-radius:var(--rsm);padding:5px 10px;white-space:nowrap}
+.vl:hover{background:var(--blue-m)}
+
+.vchk{width:18px;height:18px;border:2px solid var(--border-md);border-radius:4px;cursor:pointer;flex-shrink:0;appearance:none;-webkit-appearance:none;background:white;transition:all .15s;margin-top:2px;position:relative}
+.vchk:checked{background:var(--blue);border-color:var(--blue)}
+.vchk:checked::after{content:'';position:absolute;left:4px;top:1px;width:6px;height:10px;border:2px solid white;border-top:none;border-left:none;transform:rotate(45deg)}
+.vchk:hover{border-color:var(--blue)}
+
+.sel-bar{background:var(--blue);padding:8px 28px;display:none;align-items:center;gap:12px;flex-wrap:wrap}
+.sel-bar.show{display:flex}
+.sel-bar span{font-size:13px;color:white;font-weight:500}
+.sel-bar .sbc{font-size:13px;color:rgba(255,255,255,.8);cursor:pointer;padding:4px 10px;border-radius:var(--rsm);border:1px solid rgba(255,255,255,.3);background:transparent;transition:all .15s;white-space:nowrap}
+.sel-bar .sbc:hover{background:rgba(255,255,255,.15)}
+.sel-bar .sbc-clear{margin-left:auto}
+
+.sc.active{border-color:var(--blue);background:var(--blue-l)}
+.sc.active .sl{color:var(--blue)}
+.sum-note{font-size:11px;color:var(--muted);padding:0 28px;margin-top:-8px;margin-bottom:4px}
+
+/* Programs bar */
+.pbar{background:var(--surface);border-bottom:1px solid var(--border);padding:8px 28px;display:none;align-items:center;gap:8px;flex-wrap:wrap}
+.pbar.show{display:flex}
+.pbar-label{font-size:11px;font-weight:600;color:var(--hint);text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}
+.ptag{padding:5px 12px;border-radius:99px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--border-md);background:var(--surface2);color:var(--muted);transition:all .15s;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.ptag:hover{border-color:var(--amber);color:var(--amber)}
+.ptag.active{background:var(--amber-l);color:var(--amber);border-color:var(--amber)}
+.ptag .ptag-count{font-size:10px;background:rgba(0,0,0,.08);border-radius:99px;padding:1px 6px}
+.ptag.active .ptag-count{background:rgba(217,119,6,.15)}
+.padd{padding:5px 12px;border-radius:99px;font-size:12px;font-weight:500;cursor:pointer;border:1px dashed var(--border-md);background:transparent;color:var(--hint);transition:all .15s;white-space:nowrap}
+.padd:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-l)}
+
+/* Programs modal */
+#prog-modal{display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.45);align-items:flex-start;justify-content:center;padding-top:60px;overflow-y:auto}
+#prog-modal.show{display:flex}
+.pmodal-box{background:white;border-radius:var(--rlg);width:100%;max-width:520px;max-height:80vh;display:flex;flex-direction:column;margin:0 16px 40px}
+.pmodal-hdr{padding:18px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.pmodal-hdr h3{font-size:16px;font-weight:600}
+.pmodal-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--hint);line-height:1;padding:2px 6px;border-radius:4px}
+.pmodal-close:hover{background:var(--surface2);color:var(--text)}
+.pmodal-body{padding:18px 20px;overflow-y:auto;flex:1}
+.pmodal-add{display:flex;gap:8px;margin-bottom:18px}
+.pmodal-add input{flex:1;padding:8px 12px;border:1px solid var(--border-md);border-radius:var(--rsm);font-size:13px;outline:none}
+.pmodal-add input:focus{border-color:var(--blue)}
+.prog-list{display:flex;flex-direction:column;gap:8px}
+.prog-item{background:var(--surface2);border-radius:var(--r);padding:12px 14px;display:flex;align-items:center;gap:10px}
+.prog-item-info{flex:1;min-width:0}
+.prog-item-name{font-size:13px;font-weight:600;margin-bottom:2px}
+.prog-item-kw{font-size:12px;color:var(--muted)}
+.prog-item-kw input{font-size:12px;color:var(--muted);border:none;background:transparent;outline:none;width:100%;padding:0}
+.prog-item-kw input:focus{color:var(--text)}
+.prog-item-count{font-size:12px;color:var(--hint);white-space:nowrap;margin-right:4px}
+.prog-del{background:none;border:none;cursor:pointer;color:var(--hint);font-size:16px;padding:2px 6px;border-radius:4px;line-height:1}
+.prog-del:hover{background:var(--red-l);color:var(--red)}
+.prog-empty{font-size:13px;color:var(--hint);text-align:center;padding:20px 0}
+
+/* Assign popup */
+.assign-wrap{position:relative;display:inline-block}
+.assign-btn{font-size:12px;color:var(--amber);background:var(--amber-l);border:1px solid rgba(217,119,6,.2);border-radius:var(--rsm);padding:5px 10px;cursor:pointer;transition:all .15s;white-space:nowrap}
+.assign-btn:hover{background:#fde68a}
+.assign-drop{display:none;position:absolute;right:0;top:calc(100% + 4px);background:white;border:1px solid var(--border-md);border-radius:var(--r);box-shadow:0 4px 16px rgba(0,0,0,.12);min-width:180px;z-index:50;overflow:hidden}
+.assign-drop.show{display:block}
+.assign-drop-item{padding:8px 14px;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:8px;transition:background .1s}
+.assign-drop-item:hover{background:var(--surface2)}
+.assign-drop-item input[type=checkbox]{width:14px;height:14px;cursor:pointer;accent-color:var(--amber)}
+.assign-drop-empty{padding:10px 14px;font-size:12px;color:var(--hint);text-align:center}
+.prog-badge{font-size:10px;font-weight:500;padding:1px 7px;border-radius:99px;background:var(--amber-l);color:var(--amber);white-space:nowrap;flex-shrink:0}
+
+.vdet{display:none;border-top:1px solid var(--border);padding:18px;background:#fafaf9}
+.vdet.show{display:block}
+.dg{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.dss{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.dsc{background:white;border-radius:8px;padding:10px 12px;border:1px solid var(--border)}
+.dsc .dl{font-size:11px;color:var(--muted);margin-bottom:3px}
+.dsc .dv{font-size:16px;font-weight:700}
+.cw{position:relative;height:160px}
+.cl{font-size:12px;font-weight:500;color:var(--muted);margin-bottom:8px}
+
+#no-res{display:none;text-align:center;padding:48px;color:var(--muted);font-size:14px}
+
+
+
+@media(max-width:680px){
+  .topbar,.cbar,.sgrid,.main{padding-left:16px;padding-right:16px}
+  .mrow{grid-template-columns:repeat(3,1fr)}
+  .dg{grid-template-columns:1fr}
+  .vti{max-width:180px}
+  .tr .btn span{display:none}
+}
+</style>
+</head>
+<body>
+
+<div id="upload-screen">
+  <div class="ulogo"><svg viewBox="0 0 24 24"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg></div>
+  <h1 class="utitle">Video Insights Dashboard</h1>
+  <p class="usub">Drop your Meta export and get instant analytics</p>
+  <div class="drop-zone" id="dropz">
+    <input type="file" id="fi" accept=".csv">
+    <div class="di">📊</div>
+    <div class="dt">Drop your CSV file here</div>
+    <div class="ds">or click to browse</div>
+    <div class="dh">Export from Meta Business Suite → Content → Posts &amp; Reels → Export data</div>
+  </div>
+  <div class="steps">
+    <div class="step"><div class="sn">1</div><div class="st">Open Meta Business Suite</div></div>
+    <div class="step"><div class="sn">2</div><div class="st">Content → Posts &amp; Reels → Export</div></div>
+    <div class="step"><div class="sn">3</div><div class="st">Drop the CSV here</div></div>
+    <div class="step"><div class="sn">4</div><div class="st">Get your insights instantly</div></div>
+  </div>
+</div>
+
+<div id="loading-screen">
+  <div class="spinner"></div>
+  <div id="lmsg">Reading your file...</div>
+</div>
+
+<div id="dashboard-screen">
+  <div class="topbar">
+    <div class="tl">
+      <div class="tlogo"><svg viewBox="0 0 24 24"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg></div>
+      <div><div class="ttitle" id="dtitle">Video Insights</div><div class="tsub" id="dsub"></div></div>
+    </div>
+    <div class="tr">
+      <button class="btn btn-green" onclick="exportExcel()">
+        <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        <span>Export Excel</span>
+      </button>
+
+      <button class="btn btn-ghost" onclick="resetApp()">
+        <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.86"/></svg>
+        <span>New file</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="cbar">
+    <div class="tabs" id="tabs">
+      <button class="tab active" onclick="setFilter('all')">All</button>
+      <button class="tab" onclick="setFilter('Videos')">Videos</button>
+      <button class="tab" onclick="setFilter('Reels')">Reels</button>
+    </div>
+    <div class="sw">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="srch" placeholder="Search by title..." oninput="setSearch(this.value)">
+    </div>
+    <div class="sortw">
+      <label>Sort by</label>
+      <select onchange="setSort(this.value)">
+        <option value="reach">Reach</option>
+        <option value="views_3s">3-sec views</option>
+        <option value="thruplays">Thruplays</option>
+        <option value="engagement">Engagement</option>
+        <option value="eng_rate">Eng. rate %</option>
+        <option value="retention_pct">Retention %</option>
+        <option value="date">Date posted</option>
+      </select>
+      <button class="btn" id="dir-btn" onclick="toggleDir()" title="Toggle sort direction" style="padding:6px 10px;font-size:15px;">↓</button>
+    </div>
+    <span id="count-lbl"></span>
+    <button class="btn" id="sel-all-btn" onclick="selectAll()">Select all</button>
+  </div>
+
+  <!-- Selection bar -->
+  <div class="sel-bar" id="sel-bar">
+    <span id="sel-count">0 selected</span>
+    <button class="sbc" onclick="selectAll()">Select all in view</button>
+    <button class="sbc sbc-clear" onclick="clearSel()">✕ Clear selection</button>
+  </div>
+
+  <!-- Programs bar -->
+  <div class="pbar" id="pbar">
+    <span class="pbar-label">Programs</span>
+    <div id="prog-tags"></div>
+    <button class="padd" onclick="openProgModal()">＋ Manage programs</button>
+  </div>
+
+  <!-- Programs modal -->
+  <div id="prog-modal" onclick="if(event.target===this)closeProgModal()">
+    <div class="pmodal-box">
+      <div class="pmodal-hdr">
+        <h3>Programs</h3>
+        <button class="pmodal-close" onclick="closeProgModal()">✕</button>
+      </div>
+      <div class="pmodal-body">
+        <div class="pmodal-add">
+          <input type="text" id="prog-name-input" placeholder="Program name (e.g. كارول كرم)" dir="auto" onkeydown="if(event.key==='Enter')addProgram()">
+          <input type="text" id="prog-kw-input" placeholder="Keyword (optional)" dir="auto" onkeydown="if(event.key==='Enter')addProgram()">
+          <button class="btn btn-green" onclick="addProgram()">Add</button>
+        </div>
+        <div class="prog-list" id="prog-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sgrid" id="sgrid"></div>
+  <div class="sum-note" id="sum-note"></div>
+  <div class="main">
+    <div class="shdr" id="shdr"></div>
+    <div id="cards"></div>
+    <div id="no-res">No videos match your search.</div>
+  </div>
+</div>
+
+
+
+<script>
+let D=[], filter='all', sort='reach', sortDir='desc', search='', openKey=null, CH={}, pageName='', dateRange='';
+let selected=new Set();
+let vidLookup={};
+
+// File drop
+const dz=document.getElementById('dropz'), fi=document.getElementById('fi');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over')});
+dz.addEventListener('dragleave',()=>dz.classList.remove('over'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('over');if(e.dataTransfer.files[0])go(e.dataTransfer.files[0])});
+fi.addEventListener('change',e=>{if(e.target.files[0])go(e.target.files[0])});
+
+function go(file){
+  show('loading-screen');
+  msg('Reading your file...');
+  setTimeout(()=>{
+    Papa.parse(file,{header:true,skipEmptyLines:true,
+      complete:r=>{msg('Processing...');setTimeout(()=>{build(r.data,file.name);show('dashboard-screen');render()},80)},
+      error:()=>{show('upload-screen');alert('Could not read file. Make sure it is the CSV from Meta Business Suite.')}
+    });
+  },50);
+}
+
+function build(rows, fname){
+  const m=fname.match(/(\w+-\d{2}-\d{4})_(\w+-\d{2}-\d{4})/);
+  dateRange = m ? m[1].replace(/-/g,' ')+' – '+m[2].replace(/-/g,' ') : '';
+  const rCols=Object.keys(rows[0]||{}).filter(k=>k.includes('Percentage of total views at interval'));
+  const vr=rows.filter(r=>r['Post type']==='Videos'||r['Post type']==='Reels');
+  D=vr.map(r=>{
+    const title=(r['Title']||r['Description']||'').replace(/[\n\r]/g,' ').trim().slice(0,100)||'(no title)';
+    const duration=parseFloat(r['Duration (sec)'])||0;
+    const reach=parseInt(r['Reach'])||0;
+    const v3=parseInt(r['3-second video views'])||0;
+    const thru=parseInt(r['1-minute video views'])||0;
+    const eng=parseInt(r['Reactions, comments and shares'])||0;
+    const react=parseInt(r['Reactions'])||0;
+    const comm=parseInt(r['Comments'])||0;
+    const shr=parseInt(r['Shares'])||0;
+    const avgS=parseFloat(r['Average Seconds viewed'])||0;
+    if(!pageName&&r['Page name'])pageName=r['Page name'];
+    return{
+      title,type:r['Post type']||'Videos',publish:r['Publish time']||'',
+      duration,reach,views_3s:v3,thruplays:thru,engagement:eng,
+      reactions:react,comments:comm,shares:shr,
+      avg_secs:+avgS.toFixed(1),
+      retention_pct:duration>0?+(avgS/duration*100).toFixed(1):0,
+      eng_rate:reach>0?+(eng/reach*100).toFixed(2):0,
+      url:r['Permalink']||'',
+      ret_curve:rCols.map(c=>{const v=parseFloat(r[c]);return isNaN(v)?null:+(v*100).toFixed(1)}),
+      date:r['Publish time']?new Date(r['Publish time']):new Date(0)
+    };
+  });
+  const vc=D.filter(d=>d.type==='Videos').length, rc=D.filter(d=>d.type==='Reels').length;
+  document.getElementById('dtitle').textContent=pageName||'Video Insights';
+  document.getElementById('dsub').textContent=dateRange+(dateRange?' · ':'')+D.length+' posts';
+  document.querySelectorAll('.tab')[0].textContent=`All (${D.length})`;
+  document.querySelectorAll('.tab')[1].textContent=`Videos (${vc})`;
+  document.querySelectorAll('.tab')[2].textContent=`Reels (${rc})`;
+  loadPrograms();
+  renderProgBar();
+}
+
+function getFilt(){
+  let d=filter==='all'?[...D]:D.filter(x=>x.type===filter);
+  if(activeProgram&&programs[activeProgram]){
+    const prog=programs[activeProgram];
+    d=d.filter(v=>videoInProgram(v,prog));
+  }
+  if(search.trim()){const q=search.trim().toLowerCase();d=d.filter(x=>x.title.toLowerCase().includes(q));}
+  d.sort((a,b)=>{
+    const asc=sortDir==='asc';
+    if(sort==='date') return asc?a.date-b.date:b.date-a.date;
+    return asc?a[sort]-b[sort]:b[sort]-a[sort];
+  });
+  return d;
+}
+
+function setFilter(f){filter=f;document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',['all','Videos','Reels'][i]===f));openKey=null;selected.clear();render()}
+function setSort(s){sort=s;openKey=null;render()}
+function setSearch(v){search=v;openKey=null;selected.clear();render()}
+function toggleDir(){sortDir=sortDir==='desc'?'asc':'desc';document.getElementById('dir-btn').textContent=sortDir==='desc'?'↓':'↑';render()}
+
+function renderSum(d){
+  const isSelection=selected.size>0;
+  const sd=isSelection?d.filter(x=>selected.has(x.url+x.publish)):d;
+  const tr=sd.reduce((s,x)=>s+x.reach,0),t3=sd.reduce((s,x)=>s+x.views_3s,0),
+        tt=sd.reduce((s,x)=>s+x.thruplays,0),te=sd.reduce((s,x)=>s+x.engagement,0),
+        wd=sd.filter(x=>x.duration>0),
+        ar=wd.length?(wd.reduce((s,x)=>s+x.retention_pct,0)/wd.length).toFixed(1):'—',
+        ae=sd.length?(sd.reduce((s,x)=>s+x.eng_rate,0)/sd.length).toFixed(2):'—';
+  const ac=isSelection?'active':'';
+  document.getElementById('sgrid').innerHTML=`
+    <div class="sc ${ac}"><div class="sl">Total Reach</div><div class="sv" style="color:var(--blue)">${fmt(tr)}</div><div class="ss">${sd.length} posts</div></div>
+    <div class="sc ${ac}"><div class="sl">3-Sec Views</div><div class="sv" style="color:var(--purple)">${fmt(t3)}</div><div class="ss">${tr>0?(t3/tr*100).toFixed(1):0}% view rate</div></div>
+    <div class="sc ${ac}"><div class="sl">Thruplays</div><div class="sv" style="color:var(--green)">${fmt(tt)}</div><div class="ss">${t3>0?(tt/t3*100).toFixed(1):0}% of 3s views</div></div>
+    <div class="sc ${ac}"><div class="sl">Engagement</div><div class="sv" style="color:var(--amber)">${fmt(te)}</div><div class="ss">${ae}% avg rate</div></div>
+    <div class="sc ${ac}"><div class="sl">Avg Retention</div><div class="sv" style="color:var(--teal)">${ar}%</div><div class="ss">of video duration</div></div>`;
+  document.getElementById('sum-note').textContent=isSelection?`Stats for ${selected.size} selected post${selected.size>1?'s':''}  —  uncheck to reset`:'';
+  const sb=document.getElementById('sel-bar');
+  if(isSelection){sb.classList.add('show');document.getElementById('sel-count').textContent=`${selected.size} selected`;}
+  else sb.classList.remove('show');
+}
+
+function mc(l,v,r,c){return`<div class="mc"><div class="ml">${l}</div><div class="mv" style="color:${c}">${v}</div><div class="mb"><div class="mbf" style="width:${Math.round(r*100)}%;background:${c}"></div></div></div>`}
+function ds2(l,v){return`<div class="dsc"><div class="dl">${l}</div><div class="dv">${v}</div></div>`}
+
+function toggleCheck(e,key){
+  e.stopPropagation();
+  if(selected.has(key))selected.delete(key);else selected.add(key);
+  const d=getFilt();renderSum(d);
+  // Update just this card's border without full re-render
+  document.querySelectorAll('.vc').forEach((el,i)=>{
+    const chk=el.querySelector('.vchk');
+    if(chk&&chk.dataset.key){
+      const k=chk.dataset.key;
+      el.style.outline=selected.has(k)?'2px solid var(--blue)':'none';
+      el.style.outlineOffset='-1px';
+      chk.checked=selected.has(k);
+    }
+  });
+}
+
+function selectAll(){
+  const d=getFilt();
+  const allKeys=d.map(x=>x.url+x.publish);
+  const allSelected=allKeys.every(k=>selected.has(k));
+  if(allSelected){allKeys.forEach(k=>selected.delete(k));}
+  else{allKeys.forEach(k=>selected.add(k));}
+  render();
+}
+
+function clearSel(){selected.clear();render();}
+
+function render(){
+  const d=getFilt();
+  const slbls={reach:'Reach',views_3s:'3-sec views',thruplays:'Thruplays',engagement:'Engagement',eng_rate:'Eng. rate',retention_pct:'Retention',date:'Date'};
+  const flbls={all:'All videos & reels',Videos:'Videos only',Reels:'Reels only'};
+  const progLabel=activeProgram&&programs[activeProgram]?` · Program: ${programs[activeProgram].name}`:'';
+  document.getElementById('shdr').textContent=`${flbls[filter]}${progLabel} — sorted by ${slbls[sort]}`;
+  document.getElementById('count-lbl').textContent=`${d.length} posts`;
+  document.getElementById('no-res').style.display=d.length===0?'block':'none';
+  // Update select all button label
+  const allKeys=d.map(x=>x.url+x.publish);
+  const allSel=allKeys.length>0&&allKeys.every(k=>selected.has(k));
+  document.getElementById('sel-all-btn').textContent=allSel?'Deselect all':'Select all';
+  renderSum(d);
+  if(!d.length){document.getElementById('cards').innerHTML='';return}
+  const mR=Math.max(...d.map(x=>x.reach))||1,m3=Math.max(...d.map(x=>x.views_3s))||1,
+        mT=Math.max(...d.map(x=>x.thruplays))||1,mE=Math.max(...d.map(x=>x.engagement))||1,
+        mRt=Math.max(...d.map(x=>x.retention_pct))||1;
+  vidLookup={};
+  let h='';
+  d.forEach((x,i)=>{
+    const top=i<3,low=d.length>=8&&i>=d.length-3,key=x.url+i,open=openKey===key;
+    const selKey=x.url+x.publish,isSel=selected.has(selKey);
+    // Which programs does this video belong to?
+    const vidProgs=Object.entries(programs).filter(([pid,p])=>videoInProgram(x,p)).map(([pid,p])=>p.name);
+    h+=`<div class="vc ${open?'open':''}" id="vc${i}" style="${isSel?'outline:2px solid var(--blue);outline-offset:-1px':''}">
+      <div class="vt" onclick="tog(${i},'${key.replace(/'/g,"\\'")}')">
+        <input type="checkbox" class="vchk" data-key="${selKey}" ${isSel?'checked':''} onclick="toggleCheck(event,'${selKey.replace(/'/g,"\\'")}')">
+        <div class="vrk">#${i+1}</div>
+        <div class="vb">
+          <div class="vtr">
+            <span class="badge ${x.type==='Reels'?'br':'bv'}">${x.type==='Reels'?'Reel':'Video'}</span>
+            <span class="vti" title="${esc(x.title)}">${esc(x.title)}</span>
+            ${top?'<span class="badge bt">Top performer</span>':''}
+            ${low?'<span class="badge bl">Low reach</span>':''}
+            ${vidProgs.map(n=>`<span class="prog-badge">📌 ${esc(n)}</span>`).join('')}
+          </div>
+          <div class="vd">${fmtDate(x.publish)}${x.duration?' · '+fmtS(x.duration):''}</div>
+          <div class="mrow">
+            ${mc('Reach',fmt(x.reach),x.reach/mR,'var(--blue)')}
+            ${mc('3-sec views',fmt(x.views_3s),x.views_3s/m3,'var(--purple)')}
+            ${mc('Thruplays',fmt(x.thruplays),x.thruplays/mT,'var(--green)')}
+            ${mc('Engagement',fmt(x.engagement),x.engagement/mE,'var(--amber)')}
+            ${mc('Retention',x.retention_pct>0?x.retention_pct+'%':'—',x.retention_pct/mRt,'var(--teal)')}
+          </div>
+        </div>
+        <div class="va">
+          ${buildAssignBtn(x,i)}
+          <button class="xb">${open?'▲ Hide':'▼ Details'}</button>
+          ${x.url&&x.url!=='nan'?`<a class="vl" href="${x.url}" target="_blank">View ↗</a>`:''}
+        </div>
+      </div>
+      <div class="vdet ${open?'show':''}" id="vd${i}">
+        <div class="dg">
+          <div><div class="cl">Retention curve</div><div class="cw"><canvas id="ch${i}" role="img" aria-label="Retention curve"></canvas></div></div>
+          <div><div class="cl">Breakdown</div>
+            <div class="dss">
+              ${ds2('Reactions',fmt(x.reactions))}${ds2('Comments',fmt(x.comments))}
+              ${ds2('Shares',fmt(x.shares))}${ds2('Eng. rate',x.eng_rate+'%')}
+              ${ds2('Avg watch',fmtS(x.avg_secs))}${ds2('Duration',fmtS(x.duration))}
+              ${ds2('3s view rate',x.reach>0?(x.views_3s/x.reach*100).toFixed(1)+'%':'—')}
+              ${ds2('Thruplay rate',x.views_3s>0?(x.thruplays/x.views_3s*100).toFixed(1)+'%':'—')}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  });
+  document.getElementById('cards').innerHTML=h;
+  if(openKey){const idx=d.findIndex((_,i)=>d[i].url+i===openKey);if(idx>=0)setTimeout(()=>drawChart(idx,d[idx]),60)}
+}
+
+function tog(i,key){
+  const d=getFilt();openKey=openKey===key?null:key;render();
+  if(openKey){setTimeout(()=>{const el=document.getElementById('vc'+i);if(el)el.scrollIntoView({behavior:'smooth',block:'nearest'});drawChart(i,d[i])},60)}
+}
+
+function drawChart(i,d){
+  const c=document.getElementById('ch'+i);if(!c)return;
+  if(CH[i]){CH[i].destroy();delete CH[i]}
+  const curve=d.ret_curve.filter(v=>v!==null);
+  if(!curve.length){c.parentElement.innerHTML='<p style="color:var(--hint);font-size:13px;padding:20px;text-align:center">No retention data for this post</p>';return}
+  const labels=curve.map((_,j)=>{
+    if(d.duration>0){const s=Math.round(j/(curve.length-1)*d.duration);return s>=60?Math.floor(s/60)+'m'+(s%60?s%60+'s':''):s+'s'}return j;
+  });
+  CH[i]=new Chart(c,{type:'line',
+    data:{labels,datasets:[{data:curve,borderColor:'#1877F2',backgroundColor:'rgba(24,119,242,.08)',borderWidth:2,pointRadius:0,fill:true,tension:.3}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>ctx.raw+'% still watching'}}},
+      scales:{x:{grid:{display:false},ticks:{maxTicksLimit:6,font:{size:10}}},
+              y:{min:0,max:100,grid:{color:'rgba(0,0,0,.05)'},ticks:{callback:v=>v+'%',font:{size:10}}}}}
+  });
+}
+
+// EXCEL
+function exportExcel(){
+  const d=getFilt();if(!d.length){alert('No data to export.');return}
+  const rows=d.map((x,i)=>{
+    const progNames=Object.values(programs).filter(p=>videoInProgram(x,p)).map(p=>p.name).join(', ');
+    return{'Rank':i+1,'Title':x.title,'Program':progNames||'—','Type':x.type,'Date Posted':x.publish,'Duration (sec)':x.duration,'Reach':x.reach,'3-Sec Views':x.views_3s,'3s View Rate (%)':x.reach>0?+(x.views_3s/x.reach*100).toFixed(1):0,'Thruplays':x.thruplays,'Thruplay Rate (%)':x.views_3s>0?+(x.thruplays/x.views_3s*100).toFixed(1):0,'Total Engagement':x.engagement,'Reactions':x.reactions,'Comments':x.comments,'Shares':x.shares,'Engagement Rate (%)':x.eng_rate,'Avg Watch Time (sec)':x.avg_secs,'Retention (%)':x.retention_pct,'URL':x.url};
+  });
+  const wb=XLSX.utils.book_new(),ws=XLSX.utils.json_to_sheet(rows);
+  ws['!cols']=[{wch:6},{wch:52},{wch:22},{wch:8},{wch:18},{wch:14},{wch:12},{wch:14},{wch:16},{wch:12},{wch:18},{wch:18},{wch:12},{wch:12},{wch:10},{wch:12},{wch:18},{wch:20},{wch:14},{wch:50}];
+  XLSX.utils.book_append_sheet(wb,ws,'Video Insights');
+  // Summary sheet
+  const tr=d.reduce((s,x)=>s+x.reach,0),t3=d.reduce((s,x)=>s+x.views_3s,0),tt=d.reduce((s,x)=>s+x.thruplays,0),te=d.reduce((s,x)=>s+x.engagement,0);
+  const wd=d.filter(x=>x.duration>0),ar=wd.length?+(wd.reduce((s,x)=>s+x.retention_pct,0)/wd.length).toFixed(1):0;
+  const sr=[{Metric:'Page',Value:pageName||'—'},{Metric:'Date Range',Value:dateRange},{Metric:'Total Posts',Value:d.length},{Metric:'Videos',Value:d.filter(x=>x.type==='Videos').length},{Metric:'Reels',Value:d.filter(x=>x.type==='Reels').length},{Metric:'Total Reach',Value:tr},{Metric:'Total 3-Sec Views',Value:t3},{Metric:'3s View Rate (%)',Value:tr>0?+(t3/tr*100).toFixed(1):0},{Metric:'Total Thruplays',Value:tt},{Metric:'Thruplay Rate (%)',Value:t3>0?+(tt/t3*100).toFixed(1):0},{Metric:'Total Engagement',Value:te},{Metric:'Avg Retention (%)',Value:ar},{Metric:'Top Post by Reach',Value:d[0]?.title||'—'},{Metric:'Top Post Reach',Value:d[0]?.reach||0}];
+  const ws2=XLSX.utils.json_to_sheet(sr);ws2['!cols']=[{wch:22},{wch:50}];
+  XLSX.utils.book_append_sheet(wb,ws2,'Summary');
+  XLSX.writeFile(wb,`video_insights_${(dateRange||'export').replace(/[^a-z0-9]/gi,'_').toLowerCase()}.xlsx`);
+}
+
+
+
+
+
+// PROGRAMS
+let programs = {}; // { id: { name, keyword, manualUrls:[] } }
+let activeProgram = null; // program id or null
+
+function loadPrograms(){ try{ const s=localStorage.getItem('bl_programs'); if(s) programs=JSON.parse(s); }catch(e){} }
+function savePrograms(){ try{ localStorage.setItem('bl_programs',JSON.stringify(programs)); }catch(e){} }
+function progId(name){ return name.trim().replace(/\s+/g,'-').toLowerCase()+'_'+Date.now(); }
+
+function videoInProgram(vid, prog){
+  const kw=(prog.keyword||prog.name).toLowerCase().trim();
+  return vid.title.toLowerCase().includes(kw) || (prog.manualUrls||[]).includes(vid.url+vid.publish);
+}
+
+function countInProgram(pid){
+  const prog=programs[pid]; if(!prog) return 0;
+  return D.filter(v=>videoInProgram(v,prog)).length;
+}
+
+function addProgram(){
+  const nameEl=document.getElementById('prog-name-input');
+  const kwEl=document.getElementById('prog-kw-input');
+  const name=nameEl.value.trim();
+  if(!name){nameEl.focus();return;}
+  const keyword=kwEl.value.trim()||name;
+  const id=progId(name);
+  programs[id]={name,keyword,manualUrls:[]};
+  savePrograms();
+  nameEl.value='';kwEl.value='';
+  renderProgModal();
+  renderProgBar();
+}
+
+function deleteProgram(id){
+  if(activeProgram===id){activeProgram=null;}
+  delete programs[id];
+  savePrograms();
+  renderProgModal();
+  renderProgBar();
+  render();
+}
+
+function updateKeyword(id, val){
+  if(programs[id]) programs[id].keyword=val.trim()||programs[id].name;
+  savePrograms();
+  renderProgBar();
+}
+
+function toggleManual(vid, pid){
+  if(!programs[pid]) return;
+  const key=vid.url+vid.publish;
+  const arr=programs[pid].manualUrls||(programs[pid].manualUrls=[]);
+  const idx=arr.indexOf(key);
+  if(idx>=0) arr.splice(idx,1); else arr.push(key);
+  savePrograms();
+  // Update just the assign dropdown checkboxes without full re-render
+  renderProgBar();
+}
+
+function renderProgBar(){
+  const ids=Object.keys(programs);
+  const bar=document.getElementById('pbar');
+  bar.classList.toggle('show', ids.length>0||true); // always show if we have manage button
+  const tagsEl=document.getElementById('prog-tags');
+  tagsEl.innerHTML=ids.map(id=>{
+    const p=programs[id],cnt=countInProgram(id),active=activeProgram===id;
+    return `<button class="ptag ${active?'active':''}" onclick="setProgFilter('${id}')">
+      ${esc(p.name)}<span class="ptag-count">${cnt}</span>
+    </button>`;
+  }).join('');
+  bar.classList.toggle('show', true);
+}
+
+function setProgFilter(id){
+  activeProgram=activeProgram===id?null:id;
+  // Reset type filter when switching to program
+  if(activeProgram){filter='all';document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',i===0));}
+  selected.clear();
+  renderProgBar();
+  render();
+}
+
+function openProgModal(){
+  document.getElementById('prog-modal').classList.add('show');
+  renderProgModal();
+}
+function closeProgModal(){ document.getElementById('prog-modal').classList.remove('show'); }
+
+function renderProgModal(){
+  const ids=Object.keys(programs);
+  const list=document.getElementById('prog-list');
+  if(!ids.length){ list.innerHTML='<div class="prog-empty">No programs yet. Add one above.</div>'; return; }
+  list.innerHTML=ids.map(id=>{
+    const p=programs[id], cnt=countInProgram(id);
+    return `<div class="prog-item">
+      <div class="prog-item-info">
+        <div class="prog-item-name">${esc(p.name)}</div>
+        <div class="prog-item-kw">Keyword: <input type="text" value="${esc(p.keyword||p.name)}" dir="auto"
+          onchange="updateKeyword('${id}',this.value)" onblur="updateKeyword('${id}',this.value)"
+          title="Videos whose title contains this word are auto-included"></div>
+      </div>
+      <span class="prog-item-count">${cnt} video${cnt!==1?'s':''}</span>
+      <button class="prog-del" onclick="deleteProgram('${id}')" title="Delete program">✕</button>
+    </div>`;
+  }).join('');
+}
+
+// Assign dropdown — uses vidLookup index to avoid passing objects through HTML attributes
+function buildAssignBtn(vid, idx){
+  if(!Object.keys(programs).length) return '';
+  vidLookup[idx]=vid;
+  const items=Object.entries(programs).map(([pid,p])=>{
+    const isAuto=vid.title.toLowerCase().includes((p.keyword||p.name).toLowerCase().trim());
+    const isManual=(p.manualUrls||[]).includes(vid.url+vid.publish);
+    const isIn=isAuto||isManual;
+    const hint=isAuto?' (auto)':isManual?' (manual)':'';
+    return `<label class="assign-drop-item" onclick="event.stopPropagation()">
+      <input type="checkbox" ${isIn?'checked':''} ${isAuto?'disabled':''}
+        onchange="event.stopPropagation();toggleManual(${idx},'${pid}',this.checked)">
+      ${esc(p.name)}<span style="font-size:10px;color:var(--hint);margin-left:4px">${hint}</span>
+    </label>`;
+  }).join('');
+  return `<div class="assign-wrap">
+    <button class="assign-btn" onclick="event.stopPropagation();toggleAssignDrop(event,this)">📌 Programs</button>
+    <div class="assign-drop" onclick="event.stopPropagation()">${items||'<div class="assign-drop-empty">No programs yet</div>'}</div>
+  </div>`;
+}
+
+function toggleManual(vidIdx, pid, checked){
+  const vid=vidLookup[vidIdx];
+  if(!vid||!programs[pid]) return;
+  const key=vid.url+vid.publish;
+  if(!programs[pid].manualUrls) programs[pid].manualUrls=[];
+  const arr=programs[pid].manualUrls;
+  const i=arr.indexOf(key);
+  if(checked&&i<0) arr.push(key);
+  else if(!checked&&i>=0) arr.splice(i,1);
+  savePrograms();
+  renderProgBar();
+  if(activeProgram) render();
+}
+
+function toggleAssignDrop(e,btn){
+  e.stopPropagation();
+  document.querySelectorAll('.assign-drop.show').forEach(d=>{if(d!==btn.nextElementSibling)d.classList.remove('show')});
+  btn.nextElementSibling.classList.toggle('show');
+}
+
+// Close assign dropdowns on outside click
+document.addEventListener('click',()=>document.querySelectorAll('.assign-drop.show').forEach(d=>d.classList.remove('show')));
+
+// UTILS
+function fmt(n){if(!n&&n!==0)return'—';if(n>=1e6)return(n/1e6).toFixed(1)+'M';if(n>=1000)return(n/1000).toFixed(1)+'K';return Math.round(n).toLocaleString()}
+function fmtS(s){if(!s||s===0)return'—';if(s>=60)return Math.floor(s/60)+'m '+Math.round(s%60)+'s';return s+'s'}
+function fmtDate(d){if(!d||d==='nan')return'';try{const p=d.split(' ')[0].split('/'),ms=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];return`${parseInt(p[1])} ${ms[parseInt(p[0])-1]} ${p[2]}`}catch{return d.split(' ')[0]}}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function show(id){['upload-screen','loading-screen','dashboard-screen'].forEach(s=>{const el=document.getElementById(s);el.style.display=s===id?(s==='loading-screen'?'flex':'block'):'none'})}
+function msg(m){document.getElementById('lmsg').textContent=m}
+function resetApp(){D=[];openKey=null;CH={};filter='all';sort='reach';search='';selected.clear();activeProgram=null;document.getElementById('fi').value='';show('upload-screen')}
+</script>
+</body>
+</html>
